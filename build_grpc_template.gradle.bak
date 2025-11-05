@@ -1,0 +1,97 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        maven {
+            url "https://cdn.lfrs.sl/repository.liferay.com/nexus/content/groups/public"
+        }
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.18'
+        classpath "com.github.node-gradle:gradle-node-plugin:7.1.0"
+    }
+}
+
+plugins {
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+
+apply plugin: 'java'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+targetCompatibility = JavaVersion.VERSION_1_8
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+def protobufVersion = "3.25.5"
+def grpcVersion = "1.60.0"
+
+sourceSets {
+    main {
+        proto {
+            srcDir 'src/main/protos'
+        }
+        java {
+            srcDir 'src/main/gen'
+            srcDir 'src/main/java'
+        }
+    }
+}
+
+dependencies {
+
+    // grpc
+    implementation group: 'io.grpc', name: 'grpc-netty', version: grpcVersion
+    implementation group: 'io.grpc', name: 'grpc-protobuf', version: grpcVersion
+    implementation group: 'io.grpc', name: 'grpc-stub', version: grpcVersion
+
+    // google protobuf
+    implementation group: 'com.google.protobuf', name: 'protobuf-java', version: protobufVersion
+    implementation group: 'com.google.protobuf', name: 'protobuf-java-util', version: protobufVersion
+
+
+}
+
+protobuf {
+    generatedFilesBaseDir = "$projectDir/src"
+    protoc {
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    outputSubDir = "gen"
+                }
+            }
+        }
+        all()*.plugins {
+            grpc {
+                outputSubDir = "gen"
+            }
+        }
+    }
+}
+
+clean.doFirst {
+    delete "src/main/gen"
+}
+
+
+tasks.named('compileJava') {
+    dependsOn 'generateProto'
+}
