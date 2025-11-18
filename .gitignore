@@ -1,4 +1,7 @@
-.idea
+.idea/
 build/
 logs/
-.gradle
+.gradle/
+hang-report.log
+src/main/gen/
+

@@ -25,6 +25,16 @@ public class AdvancedTronServer {
     private final Server server;
     private final Map<String, AccountData> accountDatabase;
 
+    public AdvancedTronServer(){
+      this.port = 80;
+      this.accountDatabase = new ConcurrentHashMap<>();
+      initializeSampleData();
+
+      this.server = ServerBuilder.forPort(port)
+          .addService(new AdvancedWalletServiceImpl())
+          .build();
+    }
+
     public AdvancedTronServer(int port) {
         this.port = port;
         this.accountDatabase = new ConcurrentHashMap<>();
