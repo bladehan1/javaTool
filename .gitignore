@@ -2,6 +2,6 @@
 build/
 logs/
 .gradle/
-hang-report.log
 src/main/gen/
+*.log
 

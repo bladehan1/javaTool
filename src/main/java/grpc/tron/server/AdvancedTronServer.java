@@ -3,6 +3,7 @@ package grpc.tron.server;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
+import java.util.concurrent.Executors;
 import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
 import org.tron.protos.Protocol;
@@ -22,7 +23,7 @@ public class AdvancedTronServer {
     private static final Logger logger = Logger.getLogger(AdvancedTronServer.class.getName());
 
     private final int port;
-    private final Server server;
+    public  Server server;
     private final Map<String, AccountData> accountDatabase;
 
     public AdvancedTronServer(){
@@ -44,6 +45,21 @@ public class AdvancedTronServer {
                 .addService(new AdvancedWalletServiceImpl())
                 .build();
     }
+  public AdvancedTronServer(int port,boolean fix) {
+    this.port = port;
+    this.accountDatabase = new ConcurrentHashMap<>();
+    initializeSampleData();
+    if (fix) {
+      this.server = ServerBuilder.forPort(port)
+          .addService(new AdvancedWalletServiceImpl())
+          .executor(Executors.newFixedThreadPool(8))
+          .build();
+    } else {
+      this.server = ServerBuilder.forPort(port)
+          .addService(new AdvancedWalletServiceImpl())
+          .build();
+    }
+  }
 
     /**
      * 初始化示例数据
@@ -72,7 +88,7 @@ public class AdvancedTronServer {
     /**
      * 高级Wallet服务实现
      */
-    class AdvancedWalletServiceImpl extends WalletGrpc.WalletImplBase {
+    public class AdvancedWalletServiceImpl extends WalletGrpc.WalletImplBase {
         
         @Override
         public void getAccount(Protocol.Account request, 

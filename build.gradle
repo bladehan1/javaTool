@@ -69,8 +69,8 @@ dependencies {
     // Alibaba json
     implementation 'com.alibaba:fastjson:1.2.70'
     // Annotation 依赖
-    compileOnly 'org.projectlombok:lombok:1.18.8'
-    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
     // 日志 - 统一使用 SLF4J + logback
     implementation 'org.slf4j:slf4j-api:1.7.36'
     implementation 'ch.qos.logback:logback-classic:1.2.13'
