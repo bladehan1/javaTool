@@ -85,6 +85,8 @@ public class GrpcHangTest {
     }
   }
 
+  // 即便该测试是顺序执行、只有一个 RPC 请求，gRPC 内部依然会多线程调度
+ // 导致 ThreadlessExecutor + Netty EventLoop 之间的死锁更容易出现
   @Test(timeout = 30000) // JUnit 的 30s watchdog（如你描述）— 如果 gRPC 内部 deadlock 会在这被触发
   public void reportBlockingUnaryHang() {
     // 构造 blocking stub（默认）
