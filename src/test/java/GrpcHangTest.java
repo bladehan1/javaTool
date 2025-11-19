@@ -90,14 +90,15 @@ public class GrpcHangTest {
   @Test(timeout = 60000) // JUnit 的 30s watchdog（如你描述）— 如果 gRPC 内部 deadlock 会在这被触发
   public void reportBlockingUnaryHang() {
     // 构造 blocking stub（默认）
-    WalletGrpc.WalletBlockingStub blockingStub = WalletGrpc.newBlockingStub(channel)
-        .withDeadlineAfter(5, TimeUnit.SECONDS);
+
 
     Protocol.Account request = Protocol.Account.newBuilder()
         .setAddress(ByteString.copyFromUtf8("TXYZ1234567890abcdef"))
         .build();
 
     for (int i = 0; i < 200; i++) {
+      WalletGrpc.WalletBlockingStub blockingStub = WalletGrpc.newBlockingStub(channel)
+          .withDeadlineAfter(5, TimeUnit.SECONDS);
       Protocol.Account response = blockingStub.getAccount(request);
       assertNotNull(response);
     }

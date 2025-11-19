@@ -26,6 +26,7 @@ public class GrpcHang2Test {
   private static final Random RND = new Random();
   private AdvancedTronServer server;
   private ManagedChannel channel;
+  private final int port = 50052;
   @Rule
   public TestWatcher hangWatcher = new TestWatcher() {
     final String fileStr = "hang-report.log";
@@ -65,7 +66,7 @@ public class GrpcHang2Test {
         for (int i = 0; i < ITER; i++) {
 
           ManagedChannel channel = ManagedChannelBuilder
-              .forAddress("localhost", 50052)
+              .forAddress("localhost", port)
               .usePlaintext()
               .build();
 
@@ -104,7 +105,6 @@ public class GrpcHang2Test {
   }
   @Before
   public void startServer() throws IOException {
-    int port = 50052;
     // 注意：故意不给 server 指定 executor（或使用默认），以尽量复现问题
     Thread t = new Thread(() -> {
       server = new AdvancedTronServer(port);

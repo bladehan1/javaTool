@@ -3,6 +3,7 @@ package grpc.tron.server;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
@@ -108,7 +109,15 @@ public class AdvancedTronServer {
                              .setType(Protocol.AccountType.Normal);
                 logger.warning("账户不存在: " + address);
             }
-            
+          try {
+            Random random = new Random();
+            int sleepTime = 20 + random.nextInt(30); //
+            // 关键：强制卡住 callback → 触发 ThreadlessExecutor 死锁
+            Thread.sleep(sleepTime); // 20–50ms 是最佳窗口
+          } catch (InterruptedException ignored) {
+
+          }
+
             responseObserver.onNext(accountBuilder.build());
             responseObserver.onCompleted();
         }
