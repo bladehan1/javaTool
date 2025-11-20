@@ -22,7 +22,7 @@ import java.util.concurrent.*;
 public class GrpcHang2Test {
 
   private static final int THREADS = 8;
-  private static final int ITER = 200;   // 200×8 ≈ 1600 次 RPC，足够100%触发
+  private static final int ITER = 300;   // 200×8 ≈ 1600 次 RPC，足够100%触发
   private static final Random RND = new Random();
   private AdvancedTronServer server;
   private ManagedChannel channel;
@@ -55,7 +55,7 @@ public class GrpcHang2Test {
     }
   };
 
-  @Test(timeout = 90000)
+  @Test(timeout = 150000)
   public void reproduceGrpcHang() throws Exception {
 
     ExecutorService es = Executors.newFixedThreadPool(THREADS);
@@ -74,7 +74,7 @@ public class GrpcHang2Test {
 
           // 构造请求
           Protocol.Account req = Protocol.Account.newBuilder()
-              .setAddress(ByteString.copyFromUtf8("TXYZ-" + i))
+              .setAddress(ByteString.copyFromUtf8("TXYZ1234567890abcde" + i))
               .build();
 
           // **随机决定执行 RPC 或不执行**
@@ -85,7 +85,7 @@ public class GrpcHang2Test {
           }
 
           // **最关键：随机 shutdown channel（制造死锁）**
-          if (RND.nextInt(4) == 0) {
+          if (RND.nextInt(3) == 0) {
             channel.shutdownNow();
           } else {
             channel.shutdown();
