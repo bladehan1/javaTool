@@ -4,6 +4,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.tron.api.GrpcAPI;
 import org.tron.api.WalletGrpc;
@@ -22,7 +23,8 @@ import java.util.logging.Logger;
  */
 public class AdvancedTronServer {
     private static final Logger logger = Logger.getLogger(AdvancedTronServer.class.getName());
-
+    //使用固定系统核数线程，增加复现概率
+    private final ExecutorService serverExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private final int port;
     public  Server server;
     private final Map<String, AccountData> accountDatabase;
@@ -44,6 +46,7 @@ public class AdvancedTronServer {
         
         this.server = ServerBuilder.forPort(port)
                 .addService(new AdvancedWalletServiceImpl())
+                .executor(serverExecutor)
                 .build();
     }
   public AdvancedTronServer(int port,boolean fix) {
