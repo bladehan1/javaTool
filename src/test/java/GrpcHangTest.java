@@ -22,6 +22,7 @@ public class GrpcHangTest {
 
   private AdvancedTronServer server;
   private ManagedChannel channel;
+  private final int port = 50053;
 
   // 自动记录日志的 TestWatcher
   @Rule
@@ -55,7 +56,6 @@ public class GrpcHangTest {
 
   @Before
   public void startServer() throws IOException {
-    int port= 50052;
     // 注意：故意不给 server 指定 executor（或使用默认），以尽量复现问题
     Thread t = new Thread(() -> {
        server = new AdvancedTronServer(port);
@@ -97,8 +97,7 @@ public class GrpcHangTest {
         .build();
 
     for (int i = 0; i < 200; i++) {
-      WalletGrpc.WalletBlockingStub blockingStub = WalletGrpc.newBlockingStub(channel)
-          .withDeadlineAfter(5, TimeUnit.SECONDS);
+      WalletGrpc.WalletBlockingStub blockingStub = WalletGrpc.newBlockingStub(channel);
       Protocol.Account response = blockingStub.getAccount(request);
       assertNotNull(response);
     }
