@@ -1,6 +1,3 @@
-import static org.junit.Assert.assertNotNull;
-
-
 import com.google.protobuf.ByteString;
 import grpc.tron.server.AdvancedTronServer;
 import io.grpc.ManagedChannel;
@@ -8,8 +5,6 @@ import io.grpc.ManagedChannelBuilder;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -19,15 +14,21 @@ import org.junit.runner.Description;
 import org.tron.api.WalletGrpc;
 import org.tron.protos.Protocol;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.*;
+
 public class GrpcFixTest {
 
+  private static final int THREADS = 32; //大于服务端线程数
+  private static final int ITER = 100;
+  private static final Random RND = new Random();
   private AdvancedTronServer server;
-  private ManagedChannel channel;
-
-  // 自动记录日志的 TestWatcher
+  private final int port = 50052;
   @Rule
   public TestWatcher hangWatcher = new TestWatcher() {
-    final String fileStr = "fix-report.log";
+    final String fileStr = "hang-report.log";
     @Override
     protected void failed(Throwable e, Description description) {
       boolean isTimeout = e instanceof org.junit.runners.model.TestTimedOutException;
@@ -52,14 +53,101 @@ public class GrpcFixTest {
       }
     }
   };
+  //  保持hang 状态
+  @Test
+  public void reproduceGrpcHang() throws Exception {
+    ExecutorService es = Executors.newFixedThreadPool(THREADS);
+    List<Future<?>> futures = new ArrayList<>();
 
+    // ARM特有的内存屏障和缓存压力
+    final int MEMORY_STRESS_COUNT = 1000;
+    final byte[] memoryBuffer = new byte[1024 * 1024]; // 1MB buffer
 
+    for (int t = 0; t < THREADS; t++) {
+      futures.add(es.submit(() -> {
+        for (int i = 0; i < ITER; i++) {
+          // === ARM内存压力：频繁内存访问打乱缓存 ===
+          for (int j = 0; j < MEMORY_STRESS_COUNT; j++) {
+            memoryBuffer[(i + j) % memoryBuffer.length] = (byte) (i + j);
+          }
+
+          ManagedChannel channel = ManagedChannelBuilder
+              .forAddress("localhost", port)
+              .usePlaintext()
+              // === 关键：禁用某些优化 ===
+              .maxInboundMessageSize(64 * 1024 * 1024) // 强制大buffer
+              .build();
+
+          WalletGrpc.WalletBlockingStub stub = WalletGrpc.newBlockingStub(channel)
+              .withDeadlineAfter(5, TimeUnit.SECONDS)
+              .withExecutor(Executors.newCachedThreadPool());
+              ;
+
+          Protocol.Account req = Protocol.Account.newBuilder()
+              .setAddress(ByteString.copyFromUtf8("TXYZ1234567890abcde" + i))
+              .build();
+
+          // === 移除随机跳过，每次都执行RPC ===
+          try {
+            stub.getAccount(req);
+          } catch (Exception ignore) {
+            // 记录异常但不中断
+          }
+
+          // === 强化shutdown竞争 ===
+          int shutdownType = RND.nextInt(4);
+          switch (shutdownType) {
+            case 0:
+              channel.shutdown();
+              try {
+                channel.awaitTermination(10, TimeUnit.MILLISECONDS);
+              } catch (InterruptedException e) {}
+              break;
+            case 1:
+              channel.shutdownNow();
+              break;
+            case 2:
+              // 双重shutdown制造更多竞争
+              channel.shutdown();
+              channel.shutdownNow();
+              break;
+            case 3:
+              // 不立即shutdown，制造泄漏
+              if (RND.nextInt(100) < 10) { // 10%概率泄漏
+                // 不shutdown，让GC处理
+              } else {
+                channel.shutdownNow();
+              }
+              break;
+          }
+
+          // === 调整延迟策略 ===
+          try {
+            // 更频繁的短延迟：0-5ms
+            Thread.sleep(RND.nextInt(6));
+            // 偶尔的长延迟打乱时序
+            if (RND.nextInt(100) < 5) { // 5%概率
+              Thread.sleep(20 + RND.nextInt(30));
+            }
+          } catch (InterruptedException ignored) {}
+
+          // === 强制GC增加内存压力 ===
+          if (i % 50 == 0) {
+            System.gc();
+          }
+        }
+      }));
+    }
+
+    for (Future<?> f : futures) {
+      f.get();
+    }
+  }
   @Before
   public void startServer() throws IOException {
-    int port= 50053;
     // 注意：故意不给 server 指定 executor（或使用默认），以尽量复现问题
     Thread t = new Thread(() -> {
-       server = new AdvancedTronServer(port,true);
+      server = new AdvancedTronServer(port);
       try {
         server.start();
         server.blockUntilShutdown();
@@ -68,39 +156,12 @@ public class GrpcFixTest {
       }
     });
     t.start();
-
-    // Channel: 不指定 executor（使用默认），这是常见会触发 ThreadlessExecutor 的场景
-    channel = ManagedChannelBuilder.forAddress("localhost", port)
-        .executor(Executors.newFixedThreadPool(8))  // ★
-        .usePlaintext()
-        .build();
   }
 
   @After
   public void tearDown() throws InterruptedException {
-    if (channel != null) {
-      channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-    }
     if (server != null) {
       server.stop();
     }
   }
-
-  // 即便该测试是顺序执行、只有一个 RPC 请求，gRPC 内部依然会多线程调度
-  // 导致 ThreadlessExecutor + Netty EventLoop 之间的死锁更容易出现
-  @Test(timeout = 60000) // JUnit 的 30s watchdog（如你描述）— 如果 gRPC 内部 deadlock 会在这被触发
-  public void reportBlockingUnaryHang() {
-    // 构造 blocking stub（默认）
-    WalletGrpc.WalletBlockingStub blockingStub = WalletGrpc.newBlockingStub(channel)
-        .withDeadlineAfter(5, TimeUnit.SECONDS);
-
-    Protocol.Account request = Protocol.Account.newBuilder()
-        .setAddress(ByteString.copyFromUtf8("TXYZ1234567890abcdef"))
-        .build();
-    for (int i = 0; i < 200; i++) {
-      Protocol.Account response = blockingStub.getAccount(request);
-      assertNotNull(response);
-    }
-  }
 }
-

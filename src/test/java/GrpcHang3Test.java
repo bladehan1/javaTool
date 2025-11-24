@@ -21,11 +21,10 @@ import java.util.concurrent.*;
 
 public class GrpcHang3Test {
 
-  private static final int THREADS = 32;
-  private static final int ITER = 100;   // 200×8 ≈ 1600 次 RPC，足够100%触发
+  private static final int THREADS = 32; //大于服务端线程数
+  private static final int ITER = 100;
   private static final Random RND = new Random();
   private AdvancedTronServer server;
-  private ManagedChannel channel;
   private final int port = 50052;
   @Rule
   public TestWatcher hangWatcher = new TestWatcher() {
@@ -79,7 +78,8 @@ public class GrpcHang3Test {
               .maxInboundMessageSize(64 * 1024 * 1024) // 强制大buffer
               .build();
 
-          WalletGrpc.WalletBlockingStub stub = WalletGrpc.newBlockingStub(channel);
+          WalletGrpc.WalletBlockingStub stub = WalletGrpc.newBlockingStub(channel)
+              .withDeadlineAfter(5, TimeUnit.SECONDS);
 
           Protocol.Account req = Protocol.Account.newBuilder()
               .setAddress(ByteString.copyFromUtf8("TXYZ1234567890abcde" + i))
@@ -158,9 +158,6 @@ public class GrpcHang3Test {
 
   @After
   public void tearDown() throws InterruptedException {
-    if (channel != null) {
-      channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-    }
     if (server != null) {
       server.stop();
     }
