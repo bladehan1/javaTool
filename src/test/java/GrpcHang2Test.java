@@ -21,8 +21,8 @@ import java.util.concurrent.*;
 
 public class GrpcHang2Test {
 
-  private static final int THREADS = 8;
-  private static final int ITER = 300;   // 200×8 ≈ 1600 次 RPC，足够100%触发
+  private static final int THREADS = 32;
+  private static final int ITER = 100;   // 200×8 ≈ 1600 次 RPC，足够100%触发
   private static final Random RND = new Random();
   private AdvancedTronServer server;
   private ManagedChannel channel;
