@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+
+    <!-- Be sure to flush latest logs on exit -->
+    <shutdownHook class="third.sl4j.ShutdownHook"/>
+    <!-- 定义属性 -->
+    <property name="LOG_HOME" value="./logs" />
+
+    <!-- 原有文件 Appender - 添加即时刷新 -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE">
+        <file>${LOG_HOME}/tool-test.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/tool-test-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>500MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>50GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%t] [%c{1}]\(%F:%L\) %m%n</pattern>
+            <!-- 添加即时刷新 -->
+            <immediateFlush>true</immediateFlush>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>TRACE</level>
+        </filter>
+    </appender>
+
+    <!-- GRPC 专用 Appender -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="GRPC_FILE">
+        <file>${LOG_HOME}/grpc-test.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/grpc-test-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>3</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%t] [%c{1}]\(%F:%L\) %m%n</pattern>
+            <immediateFlush>true</immediateFlush>
+        </encoder>
+    </appender>
+    <!-- 异步 Appender -->
+   <appender class="ch.qos.logback.classic.AsyncAppender" name="ASYNC">
+       <!-- Don't discard INFO, DEBUG, TRACE events in case of queue is 80% full -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- Default is 256 -->
+        <!-- Logger will block incoming events (log calls) until queue will free some space -->
+        <!-- (the smaller value -> flush occurs often) -->
+        <queueSize>100</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <!-- 根日志 -->
+    <root level="DEBUG">
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <!-- GRPC Netty 相关日志 -->
+    <logger name="io.netty" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc.netty" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc.internal" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc.stub" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc.netty.NettyClientTransport" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="io.grpc.netty.NettyServerTransport" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+
+    <logger name="grpcClient" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="grpcServer" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+
+    <logger name="grpcTest" level="DEBUG" additivity="false">
+        <appender-ref ref="GRPC_FILE"/>
+    </logger>
+</configuration>
+

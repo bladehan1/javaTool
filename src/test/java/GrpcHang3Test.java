@@ -1,16 +1,21 @@
 import com.google.protobuf.ByteString;
+import grpc.interceptor.DebugInterceptor;
 import grpc.tron.server.AdvancedTronServer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.tron.api.WalletGrpc;
 import org.tron.protos.Protocol;
 
@@ -18,7 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class GrpcHang3Test {
 
   private static final int THREADS = 32; //大于服务端线程数
@@ -26,6 +33,15 @@ public class GrpcHang3Test {
   private static final Random RND = new Random();
   private AdvancedTronServer server;
   private final int port = 50052;
+
+  static {
+    LogManager.getLogManager().reset();
+    SLF4JBridgeHandler.removeHandlersForRootLogger();
+    SLF4JBridgeHandler.install();
+    Logger.getLogger("").setLevel(Level.ALL); // Root logger.
+  }
+
+
   @Rule
   public TestWatcher hangWatcher = new TestWatcher() {
     final String fileStr = "hang-report.log";
@@ -56,6 +72,8 @@ public class GrpcHang3Test {
 //  保持hang 状态
   @Test
   public void reproduceGrpcHang() throws Exception {
+    log.info("hello GrpcHang3Test reproduceGrpcHang");
+
     ExecutorService es = Executors.newFixedThreadPool(THREADS);
     List<Future<?>> futures = new ArrayList<>();
 
@@ -74,6 +92,7 @@ public class GrpcHang3Test {
           ManagedChannel channel = ManagedChannelBuilder
               .forAddress("localhost", port)
               .usePlaintext()
+              .intercept(new DebugInterceptor())
               // === 关键：禁用某些优化 ===
               .maxInboundMessageSize(64 * 1024 * 1024) // 强制大buffer
               .build();

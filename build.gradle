@@ -74,6 +74,8 @@ dependencies {
     // 日志 - 统一使用 SLF4J + logback
     implementation 'org.slf4j:slf4j-api:1.7.36'
     implementation 'ch.qos.logback:logback-classic:1.2.13'
+    // 衔接 grpc 日志
+    implementation group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.36'
 
     testImplementation group: 'junit', name: 'junit', version: '4.12'
     testCompileOnly 'org.projectlombok:lombok:1.18.38'
@@ -126,10 +128,11 @@ tasks.named('compileJava') {
 }
 processResources {
     dependsOn 'generateProto'
-
 }
 
-
+processTestResources {
+    dependsOn 'generateTestProto'
+}
 
 task runGrpcServer(type: JavaExec) {
     group = 'application'

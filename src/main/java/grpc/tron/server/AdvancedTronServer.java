@@ -98,7 +98,7 @@ public class AdvancedTronServer {
         public void getAccount(Protocol.Account request, 
                              StreamObserver<Protocol.Account> responseObserver) {
             String address = request.getAddress().toStringUtf8();
-            logger.info("查询账户: " + address);
+//            logger.info("查询账户: " + address);
             
             AccountData accountData = accountDatabase.get(address);
             Protocol.Account.Builder accountBuilder = Protocol.Account.newBuilder()
@@ -110,7 +110,7 @@ public class AdvancedTronServer {
             } else {
                 accountBuilder.setBalance(0L)
                              .setType(Protocol.AccountType.Normal);
-                logger.warning("账户不存在: " + address);
+//                logger.warning("账户不存在: " + address);
             }
           try {
             Random random = new Random();
@@ -187,7 +187,7 @@ public class AdvancedTronServer {
 
     public void start() throws IOException {
         server.start();
-        logger.info("高级TRON服务端启动，端口: " + port);
+//        logger.info("高级TRON服务端启动，端口: " + port);
         
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.err.println("*** 关闭gRPC服务端");
